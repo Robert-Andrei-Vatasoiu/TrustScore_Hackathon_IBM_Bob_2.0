@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Site Trust Score</title>
+  <style>
+    /* ── Reset / base ─────────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; }
+
+    body {
+      width: 360px;
+      min-height: 120px;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+      font-size: 13px;
+      line-height: 1.5;
+      color: #1f2328;
+      background: #ffffff;
+    }
+
+    /* ── Header bar ───────────────────────────────────────────────────────── */
+    .popup-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 14px 10px;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    .popup-header h1 {
+      font-size: 13px;
+      font-weight: 600;
+      margin: 0;
+      flex: 1;
+      color: #1f2328;
+    }
+
+    /* ── Score hero ───────────────────────────────────────────────────────── */
+    .score-section {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 14px 12px;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    .score-circle {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      border: 3px solid #e5e7eb;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .score-circle .score-number {
+      font-size: 22px;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .score-circle.safe   { border-color: #2ecc71; }
+    .score-circle.caution { border-color: #f39c12; }
+    .score-circle.risky  { border-color: #e74c3c; }
+
+    .score-number.safe   { color: #2ecc71; }
+    .score-number.caution { color: #f39c12; }
+    .score-number.risky  { color: #e74c3c; }
+
+    .score-meta {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .score-label {
+      font-size: 15px;
+      font-weight: 600;
+    }
+
+    .score-label.safe   { color: #2ecc71; }
+    .score-label.caution { color: #f39c12; }
+    .score-label.risky  { color: #e74c3c; }
+
+    .score-url {
+      font-size: 11px;
+      color: #57606a;
+      max-width: 260px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* ── Placeholder state ────────────────────────────────────────────────── */
+    .placeholder {
+      padding: 24px 14px;
+      color: #57606a;
+      font-size: 13px;
+    }
+
+    /* ── Findings breakdown ───────────────────────────────────────────────── */
+    .findings-section {
+      padding: 8px 14px 4px;
+    }
+
+    details {
+      border: 1px solid #e5e7eb;
+      border-radius: 5px;
+      margin-bottom: 6px;
+      overflow: hidden;
+    }
+
+    summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 7px 10px;
+      cursor: pointer;
+      font-weight: 500;
+      font-size: 12px;
+      background: #f7f8fa;
+      user-select: none;
+      list-style: none; /* hide default marker in some browsers */
+    }
+
+    /* Custom disclosure triangle */
+    summary::before {
+      content: '▶';
+      font-size: 9px;
+      margin-right: 6px;
+      color: #57606a;
+      transition: transform 0.15s;
+      display: inline-block;
+    }
+
+    details[open] > summary::before {
+      transform: rotate(90deg);
+    }
+
+    summary::-webkit-details-marker { display: none; }
+
+    .summary-title { flex: 1; }
+
+    .summary-badge {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 1px 6px;
+      border-radius: 3px;
+      background: #e5e7eb;
+      color: #57606a;
+    }
+
+    .summary-badge.has-issues {
+      background: #fdecea;
+      color: #c0392b;
+    }
+
+    .summary-badge.all-good {
+      background: #e8f8ef;
+      color: #27ae60;
+    }
+
+    .finding-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    .finding-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding: 5px 10px;
+      border-top: 1px solid #e5e7eb;
+      gap: 8px;
+    }
+
+    .finding-item:first-child { border-top: none; }
+
+    .finding-text {
+      color: #1f2328;
+      font-size: 12px;
+      flex: 1;
+    }
+
+    .finding-deduction {
+      font-size: 11px;
+      font-weight: 600;
+      color: #c0392b;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    /* ── Pre-scan section ─────────────────────────────────────────────────── */
+    .prescan-section {
+      padding: 10px 14px 12px;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    .prescan-section label {
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      color: #57606a;
+      margin-bottom: 5px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .prescan-row {
+      display: flex;
+      gap: 6px;
+    }
+
+    .prescan-input {
+      flex: 1;
+      padding: 5px 8px;
+      font-size: 12px;
+      font-family: inherit;
+      border: 1px solid #d0d7de;
+      border-radius: 4px;
+      color: #1f2328;
+      background: #ffffff;
+      min-width: 0;
+    }
+
+    .prescan-input:focus {
+      outline: none;
+      border-color: #3b82d4;
+      box-shadow: 0 0 0 2px rgba(59,130,212,0.15);
+    }
+
+    .btn-check-url {
+      padding: 5px 10px;
+      font-size: 12px;
+      font-weight: 500;
+      font-family: inherit;
+      border-radius: 4px;
+      border: 1px solid #3b82d4;
+      background: #3b82d4;
+      color: #ffffff;
+      cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .btn-check-url:hover:not(:disabled) {
+      background: #2d6db5;
+      border-color: #2d6db5;
+    }
+
+    .btn-check-url:disabled {
+      border-color: #c0c6ce;
+      background: #f7f8fa;
+      color: #57606a;
+      cursor: not-allowed;
+      opacity: 0.65;
+    }
+
+    .prescan-error {
+      margin-top: 4px;
+      font-size: 11px;
+      color: #c0392b;
+    }
+
+    .prescan-results {
+      margin-top: 8px;
+    }
+
+    .prescan-results-header {
+      font-size: 11px;
+      font-weight: 600;
+      color: #57606a;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 5px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .prescan-score-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 1px 7px;
+      border-radius: 10px;
+      background: #e5e7eb;
+      color: #57606a;
+    }
+
+    .prescan-score-pill.safe   { background: #e8f8ef; color: #27ae60; }
+    .prescan-score-pill.caution { background: #fef3e2; color: #d08700; }
+    .prescan-score-pill.risky  { background: #fdecea; color: #c0392b; }
+
+    .prescan-preliminary {
+      font-size: 10px;
+      color: #57606a;
+      font-style: italic;
+      margin-left: auto;
+    }
+
+    /* ── Deep scan button ─────────────────────────────────────────────────── */
+    .button-section {
+      padding: 10px 14px 12px;
+    }
+
+    .btn-deep-scan {
+      width: 100%;
+      padding: 7px 0;
+      font-size: 12px;
+      font-weight: 500;
+      border-radius: 4px;
+      border: 1px solid #3b82d4;
+      background: #3b82d4;
+      color: #ffffff;
+      cursor: pointer;
+    }
+
+    .btn-deep-scan:hover:not(:disabled) {
+      background: #2d6db5;
+      border-color: #2d6db5;
+    }
+
+    .btn-deep-scan:disabled {
+      border-color: #c0c6ce;
+      background: #f7f8fa;
+      color: #57606a;
+      cursor: not-allowed;
+      opacity: 0.65;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="popup-header">
+    <h1>Site Trust Score</h1>
+  </div>
+
+  <!-- Pre-Scan — check a URL before navigating to it -->
+  <div class="prescan-section">
+    <label for="prescan-input">Check a URL</label>
+    <div class="prescan-row">
+      <input id="prescan-input" class="prescan-input" type="text"
+             placeholder="https://example.com" autocomplete="off" spellcheck="false" />
+      <button id="btn-check-url" class="btn-check-url">Check URL</button>
+    </div>
+    <div id="prescan-error" class="prescan-error" hidden></div>
+    <div id="prescan-results" class="prescan-results" hidden></div>
+  </div>
+
+  <!-- Score hero — shown when results are available -->
+  <div id="score-section" class="score-section" hidden>
+    <div id="score-circle" class="score-circle">
+      <span id="score-number" class="score-number">—</span>
+    </div>
+    <div class="score-meta">
+      <span id="score-label" class="score-label">—</span>
+      <span id="score-url" class="score-url"></span>
+    </div>
+  </div>
+
+  <!-- Placeholder — shown while waiting for results -->
+  <div id="placeholder" class="placeholder">Analyzing…</div>
+
+  <!-- Breakdown — shown when results are available -->
+  <div id="findings-section" class="findings-section" hidden></div>
+
+  <!-- Deep scan button — enabled by popup.js once Level 1 results are available -->
+  <div class="button-section">
+    <button id="btn-deep-scan" class="btn-deep-scan" disabled title="Run a deep scan for vulnerable libraries, mixed content, and exposed secrets">
+      Run Deep Scan
+    </button>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
